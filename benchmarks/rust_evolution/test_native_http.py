@@ -14,9 +14,9 @@ from urllib.request import Request, urlopen
 
 from sse_probe import measure
 
-BINARY = os.environ.get("OMLX_R_TEST_BINARY")
-CHECKPOINT = os.environ.get("OMLX_R_TEST_CHECKPOINT")
-MODEL = "omlx-r-native"
+BINARY = os.environ.get("SILICONANVIL_TEST_BINARY")
+CHECKPOINT = os.environ.get("SILICONANVIL_TEST_CHECKPOINT")
+MODEL = "siliconanvil-native"
 PROMPT = "What is 2 + 2? Answer briefly."
 REQUEST = {"model": MODEL, "messages": [{"role": "user", "content": PROMPT}]}
 LONG = {**REQUEST, "messages": [{"role": "user", "content": "x " * 2000}]}
@@ -34,7 +34,7 @@ COUNT = {
 @contextmanager
 def native_server():
     with (
-        tempfile.TemporaryDirectory(prefix="omlx-r-native-test-") as scratch,
+        tempfile.TemporaryDirectory(prefix="siliconanvil-native-test-") as scratch,
         subprocess.Popen(
             [
                 str(Path(BINARY).resolve()),
@@ -111,6 +111,7 @@ class NativeHttpTests(unittest.TestCase):
             self.assertGreater(streamed["content_chunks"], 1)
             self.assertEqual(measure(url, COUNT, timeout=5)["finish_reason"], "length")
 
+            # Multibyte prompt: JSON and SSE must round-trip UTF-8 without replacement characters.
             multilingual = {
                 **REQUEST,
                 "messages": [
@@ -128,6 +129,7 @@ class NativeHttpTests(unittest.TestCase):
             with self.assertRaises(HTTPError) as caught:
                 self.post(
                     url,
+                    # 1,366 three-byte characters exceed the 4,096-byte content limit; ASCII would not test the boundary.
                     {**REQUEST, "messages": [{"role": "user", "content": "界" * 1366}]},
                 )
             with caught.exception as response:

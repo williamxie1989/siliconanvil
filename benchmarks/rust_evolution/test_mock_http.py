@@ -8,17 +8,17 @@ from urllib.request import Request, urlopen
 from protocol_contract import mock_server
 from sse_probe import measure
 
-MODEL = "omlx-r-mock"
+MODEL = "siliconanvil-mock"
 REQUEST = {"model": MODEL, "messages": [{"role": "user", "content": "hello"}]}
 
 
 @unittest.skipUnless(
-    os.environ.get("OMLX_R_TEST_BINARY"), "set the Rust integration binary"
+    os.environ.get("SILICONANVIL_TEST_BINARY"), "set the Rust integration binary"
 )
 class MockHttpTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.url = cls.enterClassContext(mock_server(os.environ["OMLX_R_TEST_BINARY"]))
+        cls.url = cls.enterClassContext(mock_server(os.environ["SILICONANVIL_TEST_BINARY"]))
 
     def post(self, payload):
         return urlopen(
@@ -39,7 +39,7 @@ class MockHttpTests(unittest.TestCase):
             completion = json.load(response)
         self.assertEqual(completion["object"], "chat.completion")
         self.assertEqual(
-            completion["choices"][0]["message"]["content"], "Hello from oMLX-R."
+            completion["choices"][0]["message"]["content"], "Hello from SiliconAnvil."
         )
         self.assertEqual(completion["choices"][0]["finish_reason"], "stop")
 
@@ -64,7 +64,7 @@ class MockHttpTests(unittest.TestCase):
         self.assertEqual(choices[0]["delta"], {"role": "assistant"})
         self.assertEqual(
             "".join(c["delta"].get("content", "") for c in choices),
-            "Hello from oMLX-R.",
+            "Hello from SiliconAnvil.",
         )
         self.assertEqual(
             [c["finish_reason"] for c in choices], [None, None, None, "stop"]
@@ -91,7 +91,7 @@ class MockHttpTests(unittest.TestCase):
             role_frame = json.loads(response.readline().removeprefix(b"data: "))
         self.assertEqual(role_frame["choices"][0]["delta"], {"role": "assistant"})
         self.assertEqual(
-            measure(self.url, REQUEST, timeout=3)["content"], "Hello from oMLX-R."
+            measure(self.url, REQUEST, timeout=3)["content"], "Hello from SiliconAnvil."
         )
 
 

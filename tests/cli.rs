@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(not(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")))]
 #[test]
 fn native_smoke_requires_the_opt_in_backend() {
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .args(["native-smoke", "missing-checkpoint"])
         .output()
         .unwrap();
@@ -16,7 +16,7 @@ fn native_smoke_requires_the_opt_in_backend() {
 
 #[test]
 fn native_http_reports_a_startup_error_before_announcing_a_port() {
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .args(["serve-native", "missing-checkpoint", "--port", "0"])
         .output()
         .unwrap();
@@ -40,7 +40,7 @@ fn native_http_reports_a_startup_error_before_announcing_a_port() {
 #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
 #[test]
 fn native_smoke_rejects_a_missing_local_checkpoint() {
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .args(["native-smoke", "missing-checkpoint"])
         .output()
         .unwrap();
@@ -55,7 +55,7 @@ fn native_smoke_rejects_a_hidden_extra_tensor_file_before_loading() {
     std::fs::write(directory.0.join("config.json"), r#"{"model_type":"qwen2"}"#).unwrap();
     std::fs::write(directory.0.join("model.safetensors"), b"placeholder").unwrap();
     std::fs::write(directory.0.join(".safetensors"), b"extra").unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .arg("native-smoke")
         .arg(&directory.0)
         .output()
@@ -68,9 +68,9 @@ fn native_smoke_rejects_a_hidden_extra_tensor_file_before_loading() {
 #[test]
 #[ignore = "requires a local small Qwen2 MLX checkpoint and Apple Silicon hardware"]
 fn native_smoke_generates_and_releases_the_checkpoint() {
-    let checkpoint = std::env::var_os("OMLX_R_TEST_CHECKPOINT")
-        .expect("point OMLX_R_TEST_CHECKPOINT at the local Qwen2 checkpoint");
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let checkpoint = std::env::var_os("SILICONANVIL_TEST_CHECKPOINT")
+        .expect("point SILICONANVIL_TEST_CHECKPOINT at the local Qwen2 checkpoint");
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .arg("native-smoke")
         .arg(checkpoint)
         .output()
@@ -109,7 +109,7 @@ impl Reference {
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
-        let path = std::env::temp_dir().join(format!("omlx-r-test-{}-{stamp}", std::process::id()));
+        let path = std::env::temp_dir().join(format!("siliconanvil-test-{}-{stamp}", std::process::id()));
         std::fs::create_dir(&path).unwrap();
         Self(path)
     }
@@ -140,7 +140,7 @@ impl Reference {
     }
 
     fn status(&self, baseline: &str) -> Output {
-        Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
             .arg("upstream-status")
             .arg(&self.0)
             .args(["--baseline", baseline])
@@ -157,20 +157,20 @@ impl Drop for Reference {
 
 #[test]
 fn reports_the_package_version() {
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .arg("--version")
         .output()
         .unwrap();
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8(output.stdout).unwrap(),
-        format!("omlx-r {}\n", env!("CARGO_PKG_VERSION"))
+        format!("siliconanvil {}\n", env!("CARGO_PKG_VERSION"))
     );
 }
 
 #[test]
 fn rejects_reference_without_git_history() {
-    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+    let output = Command::new(env!("CARGO_BIN_EXE_siliconanvil"))
         .args(["upstream-status", "Cargo.toml"])
         .output()
         .unwrap();

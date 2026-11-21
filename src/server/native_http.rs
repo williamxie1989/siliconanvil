@@ -17,7 +17,7 @@ use tokio::sync::{mpsc, oneshot};
 use super::worker::{Admission, Client, Output, Worker};
 use super::{invalid_request, router, App, ChatRequest, Completion};
 
-pub(super) const MODEL: &str = "omlx-r-native";
+pub(super) const MODEL: &str = "siliconanvil-native";
 const MAX_MESSAGES: usize = 32;
 const MAX_CONTENT_BYTES: usize = 4096;
 const HTTP_DRAIN: Duration = Duration::from_secs(2);

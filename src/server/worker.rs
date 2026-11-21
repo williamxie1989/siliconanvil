@@ -116,7 +116,7 @@ impl Worker {
         let (commands, incoming) = mailbox::sync_channel(1);
         let (ready, startup) = mailbox::sync_channel(0);
         let thread = thread::Builder::new()
-            .name("omlx-inference".into())
+            .name("siliconanvil-inference".into())
             .spawn(move || {
                 let mut engine = load()?;
                 if ready.send(()).is_ok() {
@@ -133,7 +133,7 @@ impl Worker {
                             let terminal = match reply {
                                 Ok(reply) => Output::Finished(reply),
                                 Err(error) => {
-                                    eprintln!("omlx-r inference: {error}");
+                                    eprintln!("siliconanvil inference: {error}");
                                     Output::Failed
                                 }
                             };

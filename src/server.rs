@@ -32,8 +32,8 @@ mod native_http;
 #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
 pub(crate) use native_http::serve_native;
 
-const MODEL: &str = "omlx-r-mock";
-const TEXT: [&str; 2] = ["Hello", " from oMLX-R."];
+const MODEL: &str = "siliconanvil-mock";
+const TEXT: [&str; 2] = ["Hello", " from SiliconAnvil."];
 const FIRST_OUTPUT_DELAY: Duration = Duration::from_millis(25);
 const MAX_REQUEST_BYTES: usize = 64 * 1024;
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
@@ -189,7 +189,7 @@ impl Completion {
 async fn models(State(app): State<App>) -> Json<Value> {
     Json(json!({
         "object": "list",
-        "data": [{"id": app.model(), "object": "model", "created": 0, "owned_by": "omlx-r"}],
+        "data": [{"id": app.model(), "object": "model", "created": 0, "owned_by": "siliconanvil"}],
     }))
 }
 

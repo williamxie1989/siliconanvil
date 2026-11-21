@@ -9,7 +9,7 @@ mod server;
 
 const REFERENCE: &str = include_str!("../upstream/reference-commit");
 const UPSTREAM_MAIN: &str = "refs/remotes/origin/main";
-const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]\n       omlx-r serve-native <checkpoint-dir> [--port <port>]\n       omlx-r native-smoke <checkpoint-dir> [--prompt <text>]";
+const USAGE: &str = "Usage: siliconanvil --version\n       siliconanvil upstream-status <reference-repo> [--baseline <commit-sha>]\n       siliconanvil serve [--port <port>]\n       siliconanvil serve-native <checkpoint-dir> [--port <port>]\n       siliconanvil native-smoke <checkpoint-dir> [--prompt <text>]";
 
 fn git(repo: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new("git")
@@ -83,7 +83,7 @@ fn upstream_status(repo: &Path, baseline: &str) -> Result<ExitCode, String> {
 fn run() -> Result<ExitCode, String> {
     let args: Vec<_> = env::args_os().skip(1).collect();
     match args.as_slice() {
-        [flag] if flag == "--version" => println!("omlx-r {}", env!("CARGO_PKG_VERSION")),
+        [flag] if flag == "--version" => println!("siliconanvil {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--help" => println!("{USAGE}"),
         [command, path] if command == "native-smoke" => {
             native_smoke(Path::new(path), "What is 2 + 2? Answer briefly.")?;
@@ -154,7 +154,7 @@ fn serve_native(_path: &Path, _port: u16) -> Result<(), String> {
 
 fn main() -> ExitCode {
     run().unwrap_or_else(|error| {
-        eprintln!("omlx-r: {error}");
+        eprintln!("siliconanvil: {error}");
         ExitCode::FAILURE
     })
 }

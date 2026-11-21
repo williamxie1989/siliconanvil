@@ -5,6 +5,6 @@ __pycache__/
 *.sqlite3-shm
 *.sqlite3-wal
 /.venv/
-/.omlx-r/
+/.siliconanvil/
 /.env
 /artifacts/

@@ -19,7 +19,7 @@
       "shared": {
         "finish_reason": "stop",
         "media_type": "application/json",
-        "model": "omlx-r-mock",
+        "model": "siliconanvil-mock",
         "object": "chat.completion",
         "role": "assistant",
         "status": 200
@@ -37,7 +37,7 @@
         "done": true,
         "finish_reason": "stop",
         "media_type": "text/event-stream",
-        "model": "omlx-r-mock",
+        "model": "siliconanvil-mock",
         "object": "chat.completion.chunk",
         "outcome": "completed",
         "role": "assistant",
@@ -56,7 +56,7 @@
         "done": true,
         "finish_reason": null,
         "media_type": "text/event-stream",
-        "model": "omlx-r-mock",
+        "model": "siliconanvil-mock",
         "object": "chat.completion.chunk",
         "outcome": "server_error",
         "role": "assistant",
@@ -79,7 +79,7 @@
         "media_type": "application/json",
         "models": [
           {
-            "id": "omlx-r-mock",
+            "id": "siliconanvil-mock",
             "object": "model"
           }
         ],

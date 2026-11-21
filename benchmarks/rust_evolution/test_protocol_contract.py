@@ -116,13 +116,13 @@ class ProtocolContractTests(unittest.TestCase):
             compare({"chat_sse": sse, "chat_json": {}}, {"chat_sse": sse})
 
     @unittest.skipUnless(
-        os.environ.get("OMLX_R_TEST_BINARY"), "set the Rust integration binary"
+        os.environ.get("SILICONANVIL_TEST_BINARY"), "set the Rust integration binary"
     )
     def test_compares_the_rust_binary_against_the_pinned_upstream_fixture(self):
         fixture = Path(__file__).with_name("fixtures") / "omlx-v0.8.2-contract.json"
         reference = json.loads(fixture.read_text(encoding="utf-8"))
         comparison = compare(
-            reference["cases"], capture_candidate(os.environ["OMLX_R_TEST_BINARY"])
+            reference["cases"], capture_candidate(os.environ["SILICONANVIL_TEST_BINARY"])
         )
         self.assertTrue(comparison["shared_contract_matches"])
         self.assertEqual(set(comparison["cases"]), {"models", "chat_json", "chat_sse"})

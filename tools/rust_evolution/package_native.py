@@ -203,18 +203,18 @@ def archive_metadata(info):
     info.uid = info.gid = 0
     info.uname = info.gname = ""
     info.mtime = 0
-    info.mode = 0o755 if info.isdir() or info.name.endswith("/omlx-r") else 0o644
+    info.mode = 0o755 if info.isdir() or info.name.endswith("/siliconanvil") else 0o644
     return info
 
 
 def package(args):
     output = args.output.absolute()
     with tempfile.TemporaryDirectory(
-        prefix=".omlx-r-package-", dir=output.parent
+        prefix=".siliconanvil-package-", dir=output.parent
     ) as tmp:
-        stage = Path(tmp) / "omlx-r-native"
+        stage = Path(tmp) / "siliconanvil-native"
         stage.mkdir()
-        binary = stage / "omlx-r"
+        binary = stage / "siliconanvil"
         shutil.copy2(args.binary, binary)
         build_info = inspect_binary(binary)
         stage_metal(args.wheel, stage)
@@ -227,8 +227,8 @@ def package(args):
             args.compiler_rt_license,
         )
         shutil.copyfile(ROOT / "LICENSE", stage / "LICENSE")
-        shutil.copyfile(ROOT / "docs/r-005-release-readiness.md", stage / "RELEASE.md")
-        for name in ("r-004-native-mlx.md", "omlx-v0.8.2-contract.md"):
+        shutil.copyfile(ROOT / "docs/release-readiness.md", stage / "RELEASE.md")
+        for name in ("native-mlx.md", "upstream-contract-v0.8.2.md"):
             shutil.copyfile(ROOT / "docs" / name, stage / name)
         manifest = {
             **build_info,

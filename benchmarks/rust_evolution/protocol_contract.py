@@ -20,7 +20,7 @@ from unittest.mock import patch
 from sse_probe import data_events
 
 UPSTREAM = {"tag": "v0.8.2", "commit": "5eeec7757f83bfc99eeb87abe49686d00a0bba1f"}
-MODEL = "omlx-r-mock"
+MODEL = "siliconanvil-mock"
 REQUEST = {"model": MODEL, "messages": [{"role": "user", "content": "Hello"}]}
 CASES = ("models", "chat_json", "chat_sse")
 ERROR_CASE = "chat_sse_error"
@@ -258,7 +258,7 @@ def capture_upstream(checkout):
         ),
         "upstream checkout must be clean",
     )
-    with tempfile.TemporaryDirectory(prefix="omlx-r-reference-") as isolated:
+    with tempfile.TemporaryDirectory(prefix="siliconanvil-reference-") as isolated:
         env = {
             key: value
             for key, value in os.environ.items()
