@@ -1,12 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 import json
 import os
-import selectors
-import subprocess
 import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
+from protocol_contract import mock_server
 from sse_probe import measure
 
 MODEL = "omlx-r-mock"
@@ -19,33 +18,7 @@ REQUEST = {"model": MODEL, "messages": [{"role": "user", "content": "hello"}]}
 class MockHttpTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.process = subprocess.Popen(
-            [os.environ["OMLX_R_TEST_BINARY"], "serve", "--port", "0"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-        cls.addClassCleanup(cls.stop_server)
-        with selectors.DefaultSelector() as selector:
-            selector.register(cls.process.stdout, selectors.EVENT_READ)
-            if not selector.select(timeout=5):
-                raise RuntimeError(
-                    "Rust mock service did not announce its listening address"
-                )
-        prefix = "Listening on http://127.0.0.1:"
-        line = cls.process.stdout.readline().strip()
-        if not line.startswith(prefix):
-            raise RuntimeError(f"unexpected server address: {line!r}")
-        cls.url = line.removeprefix("Listening on ")
-
-    @classmethod
-    def stop_server(cls):
-        cls.process.terminate()
-        try:
-            cls.process.communicate(timeout=3)
-        except subprocess.TimeoutExpired:
-            cls.process.kill()
-            cls.process.communicate(timeout=3)
+        cls.url = cls.enterClassContext(mock_server(os.environ["OMLX_R_TEST_BINARY"]))
 
     def post(self, payload):
         return urlopen(

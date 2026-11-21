@@ -11,3 +11,7 @@
 | 请求扩展和用量 | [请求字段](https://github.com/jundot/omlx/blob/5eeec7757f83bfc99eeb87abe49686d00a0bba1f/omlx/api/openai_models.py#L333) 支持采样参数、token 上限和 `stream_options`。[用量帧](https://github.com/jundot/omlx/blob/5eeec7757f83bfc99eeb87abe49686d00a0bba1f/omlx/server.py#L7280) 可以紧随完成帧 | 当前 mock 按最小字段校验。收集实际客户端使用的字段后确定扩展顺序，工具调用、推理内容和用量单列验收 |
 
 下一项交付是版本化的双方响应 fixture 和可重复的对照 runner。先使用上游 mock engine 验证 HTTP 契约，分别记录进程版本、请求、响应形状和差异。隔离实例使用临时端口和独立配置目录。确认某项需要真实模型后再评估模型、内存余量及启动方式。现有 oMLX 服务作为独立工作负载继续运行。
+
+## Executed comparison
+
+The fixture, replay commands, and observed gaps are recorded in the [v0.8.2 protocol baseline](omlx-v0.8.2-contract.md).

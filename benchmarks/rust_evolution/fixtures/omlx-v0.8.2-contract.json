@@ -1,0 +1,101 @@
+{
+  "cases": {
+    "chat_json": {
+      "observed": {
+        "text": "Chat response.",
+        "usage_fields": [
+          "completion_tokens",
+          "completion_tokens_details",
+          "generation_duration",
+          "generation_tokens_per_second",
+          "input_tokens",
+          "output_tokens",
+          "prompt_tokens",
+          "prompt_tokens_details",
+          "total_time",
+          "total_tokens"
+        ]
+      },
+      "shared": {
+        "finish_reason": "stop",
+        "media_type": "application/json",
+        "model": "omlx-r-mock",
+        "object": "chat.completion",
+        "role": "assistant",
+        "status": 200
+      }
+    },
+    "chat_sse": {
+      "observed": {
+        "content_chunks": 2,
+        "error_message": null,
+        "role_frames": 2,
+        "text": "Hi there",
+        "usage_fields": []
+      },
+      "shared": {
+        "done": true,
+        "finish_reason": "stop",
+        "media_type": "text/event-stream",
+        "model": "omlx-r-mock",
+        "object": "chat.completion.chunk",
+        "outcome": "completed",
+        "role": "assistant",
+        "status": 200
+      }
+    },
+    "chat_sse_error": {
+      "observed": {
+        "content_chunks": 1,
+        "error_message": "fixture engine failure",
+        "role_frames": 2,
+        "text": "Partial output",
+        "usage_fields": []
+      },
+      "shared": {
+        "done": true,
+        "finish_reason": null,
+        "media_type": "text/event-stream",
+        "model": "omlx-r-mock",
+        "object": "chat.completion.chunk",
+        "outcome": "server_error",
+        "role": "assistant",
+        "status": 200
+      }
+    },
+    "models": {
+      "observed": {
+        "model_fields": [
+          "created",
+          "id",
+          "max_model_len",
+          "model_type",
+          "object",
+          "owned_by"
+        ],
+        "owned_by": "omlx"
+      },
+      "shared": {
+        "media_type": "application/json",
+        "models": [
+          {
+            "id": "omlx-r-mock",
+            "object": "model"
+          }
+        ],
+        "object": "list",
+        "status": 200
+      }
+    }
+  },
+  "reference": {
+    "commit": "5eeec7757f83bfc99eeb87abe49686d00a0bba1f",
+    "tag": "v0.8.2"
+  },
+  "runtime": {
+    "fastapi": "0.141.1",
+    "python": "3.11.13"
+  },
+  "schema": 1,
+  "transport": "ASGI HTTP with mock engine"
+}
