@@ -3,9 +3,11 @@ use std::env;
 use std::path::Path;
 use std::process::{Command, ExitCode};
 
+mod server;
+
 const REFERENCE: &str = include_str!("../upstream/reference-commit");
 const UPSTREAM_MAIN: &str = "refs/remotes/origin/main";
-const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]";
+const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]";
 
 fn git(repo: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new("git")
@@ -81,6 +83,14 @@ fn run() -> Result<ExitCode, String> {
     match args.as_slice() {
         [flag] if flag == "--version" => println!("omlx-r {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--help" => println!("{USAGE}"),
+        [command] if command == "serve" => serve(0)?,
+        [command, flag, value] if command == "serve" && flag == "--port" => {
+            let port = value
+                .to_str()
+                .and_then(|value| value.parse::<u16>().ok())
+                .ok_or("port must be an integer between 0 and 65535")?;
+            serve(port)?;
+        }
         [command, path] if command == "upstream-status" => {
             return upstream_status(Path::new(path), REFERENCE.trim());
         }
@@ -93,6 +103,10 @@ fn run() -> Result<ExitCode, String> {
         _ => return Err(USAGE.into()),
     }
     Ok(ExitCode::SUCCESS)
+}
+
+fn serve(port: u16) -> Result<(), String> {
+    server::serve(port).map_err(|error| format!("could not serve on 127.0.0.1:{port}: {error}"))
 }
 
 fn main() -> ExitCode {
