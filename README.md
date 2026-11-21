@@ -26,3 +26,5 @@ See the [mock HTTP/SSE contract](docs/r-002-http-contract.md) for supported requ
 Use `serve-native <checkpoint-dir>` for local Metal-backed chat completions or `native-smoke <checkpoint-dir>` to check generation and allocator cleanup. Both commands require the optional build and a verified Metal library beside the executable. See the [native MLX build and HTTP contract](docs/r-004-native-mlx.md).
 
 Use the [project workflow](docs/project-workflow.md) to resume work across sessions and compare a pinned oMLX commit with upstream changes.
+
+See [release readiness](docs/r-005-release-readiness.md) for the arm64 candidate build, license inventory and compatibility matrix.
