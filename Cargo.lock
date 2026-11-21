@@ -1602,7 +1602,7 @@ dependencies = [
 
 [[package]]
 name = "siliconanvil"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "axum",
  "futures-util",
