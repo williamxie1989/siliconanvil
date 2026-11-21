@@ -43,21 +43,21 @@ class ProjectTests(unittest.TestCase):
 
     def test_new_process_recovers_active_task_and_searchable_memory(self):
         self.assertEqual(self.call("resume")["focus"]["id"], "EV-001")
-        self.call("start", "EV-001", "--summary", "开始审计")
+        self.call("start", "EV-001", "--summary", "start audit")
         self.call(
             "note",
             "EV-001",
             "--summary",
-            "residency 实验",
+            "residency experiment",
             "--evidence",
             str(self.evidence),
             "--next",
-            "核对版本",
+            "check version",
         )
-        self.call("note", "EV-001", "--summary", "补充路径")
+        self.call("note", "EV-001", "--summary", "add path")
         resumed = self.call("resume")
         self.assertEqual(resumed["focus"]["state"], "active")
-        self.assertEqual(resumed["focus"]["next"], "核对版本")
+        self.assertEqual(resumed["focus"]["next"], "check version")
         (hit,) = self.call("history", "--query", "residency")
         self.assertEqual(hit["evidence"], [str(self.evidence.resolve())])
         self.assertEqual(len(hit["head"]), 40)
@@ -65,14 +65,14 @@ class ProjectTests(unittest.TestCase):
     def test_transitions_gate_dependencies_and_require_evidence(self):
         self.assertIn("EV-001", self.call("start", "EV-002", ok=False))
         self.call("start", "EV-001")
-        self.call("block", "EV-001", "--summary", "缺原始数据")
+        self.call("block", "EV-001", "--summary", "missing raw data")
         self.assertEqual(self.call("resume")["focus"]["state"], "blocked")
         self.call("start", "EV-001")
         self.assertIn(
-            "evidence", self.call("finish", "EV-001", "--summary", "完成", ok=False)
+            "evidence", self.call("finish", "EV-001", "--summary", "done", ok=False)
         )
         self.call(
-            "finish", "EV-001", "--summary", "完成", "--evidence", str(self.evidence)
+            "finish", "EV-001", "--summary", "done", "--evidence", str(self.evidence)
         )
         self.assertEqual(self.call("resume")["focus"]["id"], "R-001")
         self.assertIn("GATE-P1", self.call("start", "EV-201", ok=False))

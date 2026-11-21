@@ -1,13 +1,13 @@
-# 上游变更决策
+# Upstream change decisions
 
-2026-11-21 首次核对。参考点 `e1a402cf`，观察到 `ade9f20a`（v0.8.2），上游新增 11 个提交。这个窗口尚未完成代码移植或兼容性验证。
+First review on 2026-11-21. Reference point `e1a402cf`; observed `ade9f20a` (v0.8.2), with 11 new upstream commits. No code was ported and no compatibility verification was completed for this window.
 
-| 上游提交 | 范围 | 决定 |
+| Upstream commit | Scope | Decision |
 | --- | --- | --- |
-| `e095f9d5` | DeepSeek V4 hc kernel 的形状适用条件 | 保留到 DeepSeek 原生适配时审查 |
-| `fd240293` | Qwen4 图像位置编码 | 等 VLM 进入支持范围时建立 fixture |
-| `24e5f905`、`13fd0c9d`、`9d0f474b` | Inkling 2 Mini 模型、量化和 ModelOpt 加载 | 保留到模型格式验证 |
-| `2cf8fce6` | Hy4 系列、MTP 和量化 | 保留到模型范围评估 |
-| 其余 5 个 | 版本、Formula、CUDA helper 版本 | 记录为参考项目发布背景 |
+| `e095f9d5` | Shape applicability conditions for the DeepSeek V4 hc kernel | Keep for review during native DeepSeek adaptation |
+| `fd240293` | Qwen4 image positional encoding | Build a fixture once the VLM enters the supported range |
+| `24e5f905`, `13fd0c9d`, `9d0f474b` | Inkling 2 Mini models, quantization, and ModelOpt loading | Keep for model-format verification |
+| `2cf8fce6` | Hy4 family, MTP, and quantization | Keep for model-scope evaluation |
+| Remaining 5 | Version, Formula, CUDA helper versions | Record as release background of the reference project |
 
-下一次核对追加日期、比较范围、提交、受影响契约、采纳或延期理由。兼容性结论需关联实际验证证据。
+The next review appends the date, comparison range, commits, affected contracts, and the adopt-or-defer rationale. Compatibility conclusions must link to actual verification evidence.

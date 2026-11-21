@@ -1,14 +1,14 @@
-# R-004 native MLX smoke
+# Native MLX backend
 
 The first native path is a local, one-shot Rust command behind the `native-mlx` Cargo feature. It uses the pinned MIT-licensed [mlex 0.1.3](https://crates.io/crates/mlex/0.1.3) runtime for Qwen tokenization and decoder execution. This runtime vendors MLX and its C API. The build is independent of the running Python oMLX service and its MLX wheel.
 
 The smoke runs bounded text generation on a small local Qwen checkpoint, then synchronizes, drops the session, clears the process-local allocator cache, and repeats. Its JSON report records text, token counts, and allocator bytes before load, after generation with the session still live, and after cleanup. Both cycles must return live and cached allocation to the startup baseline within tolerance.
 
-The first milestone covers the Rust command and memory lifecycle. R-004A serves the same verified checkpoint through the existing HTTP routes. Distribution of the Metal kernel library remains a release task.
+The first milestone covers the Rust command and memory lifecycle. The next step serves the same verified checkpoint through the existing HTTP routes. Distribution of the Metal kernel library remains a release task.
 
 ## Native HTTP contract
 
-Run `target/debug/omlx-r serve-native /path/to/local-checkpoint --port 0` with the same native build and verified Metal library. The service announces its IPv4 loopback address after preflight and model load. `GET /v1/models` lists `omlx-r-native`. Send that ID in `POST /v1/chat/completions` with the text-only request fields used by the mock. Native requests accept up to 32 messages and 4,096 UTF-8 content bytes in total. The Qwen2 checkpoint must have a ByteLevel decoder.
+Run `target/debug/siliconanvil serve-native /path/to/local-checkpoint --port 0` with the same native build and verified Metal library. The service announces its IPv4 loopback address after preflight and model load. `GET /v1/models` lists `siliconanvil-native`. Send that ID in `POST /v1/chat/completions` with the text-only request fields used by the mock. Native requests accept up to 32 messages and 4,096 UTF-8 content bytes in total. The Qwen2 checkpoint must have a ByteLevel decoder.
 
 One dedicated thread loads, uses, and drops the session. It admits one generation at a time. Concurrent requests receive HTTP 503 with `worker_busy` before SSE headers. The model list stays available during generation. Requests use greedy decoding, fresh generation caches, and a 32-token cap. Output is plain text with `stop` or `length`. A successful stream emits the assistant role, text deltas, one finish frame, and one `[DONE]`. The bounded output channel uses nonblocking sends. A generation failure returns HTTP 500 for JSON or an SSE error followed by EOF for streaming.
 
@@ -18,8 +18,8 @@ Verify admission, cancellation, and worker cleanup with a scripted backend first
 
 ```sh
 cargo test --locked
-OMLX_R_TEST_BINARY=target/debug/omlx-r \
-  OMLX_R_TEST_CHECKPOINT=/path/to/local-checkpoint \
+SILICONANVIL_TEST_BINARY=target/debug/siliconanvil \
+  SILICONANVIL_TEST_CHECKPOINT=/path/to/local-checkpoint \
   python3 -m unittest discover -s benchmarks/rust_evolution -p test_native_http.py
 ```
 
@@ -40,7 +40,7 @@ For the verified configuration, extract `mlx/lib/mlx.metallib` from the Apple Si
 ```sh
 unzip -p /path/to/mlx_metal-0.31.2-macos-arm64.whl mlx/lib/mlx.metallib > target/debug/mlx.metallib
 shasum -a 256 target/debug/mlx.metallib
-target/debug/omlx-r native-smoke /path/to/local-checkpoint
+target/debug/siliconanvil native-smoke /path/to/local-checkpoint
 ```
 
 The command accepts a UTF-8 prompt of up to 1,024 bytes with `--prompt`. It allows a Qwen2 checkpoint with one `model.safetensors` file of at most 1 GiB. It confirms that MLX selected the Metal GPU, disables prefix-cache reuse, and uses greedy decoding with a 32-token cap. It checks both live and cached allocator bytes after each cleanup with a 16 MiB tolerance.
@@ -48,7 +48,7 @@ The command accepts a UTF-8 prompt of up to 1,024 bytes with `--prompt`. It allo
 Run the opt-in hardware regression with the pinned checkpoint and the colocated Metal library:
 
 ```sh
-OMLX_R_TEST_CHECKPOINT=/path/to/local-checkpoint \
+SILICONANVIL_TEST_CHECKPOINT=/path/to/local-checkpoint \
   cargo test --locked --features native-mlx native_smoke_generates_and_releases_the_checkpoint -- --ignored
 ```
 

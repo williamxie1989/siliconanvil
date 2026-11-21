@@ -87,18 +87,18 @@ class ResidencyReplayTests(unittest.TestCase):
         self.events[-3]["mono"] = 200
         self.events[-2]["mono"] = 210
         self.write_input()
-        with self.assertRaisesRegex(ValueError, "时序"):
+        with self.assertRaisesRegex(ValueError, "ordering"):
             replay(self.run)
 
     def test_rejects_aborted_experiment_and_failed_unload(self):
         self.events[-1]["aborted"] = True
         self.write_input()
-        with self.assertRaisesRegex(ValueError, "中止"):
+        with self.assertRaisesRegex(ValueError, "aborted"):
             replay(self.run)
         self.events[-1]["aborted"] = False
         self.events[-2]["result"]["status"] = "failed"
         self.write_input()
-        with self.assertRaisesRegex(ValueError, "卸载"):
+        with self.assertRaisesRegex(ValueError, "unload"):
             replay(self.run)
 
 

@@ -16,7 +16,7 @@ INPUTS = ("samples.jsonl", "events.jsonl", "final.json")
 def monotonic_time(row, key="mono"):
     value = row[key]
     if type(value) not in (float, int) or not math.isfinite(value) or value < 0:
-        raise ValueError(f"无效的 monotonic 时间: {key}")
+        raise ValueError(f"invalid monotonic time: {key}")
     return value
 
 
@@ -25,9 +25,9 @@ def vm_sample(row):
     wired = row["vm"]["Pages wired down"]
     swapouts = row["vm"]["Swapouts"]
     if type(page) is not int or page <= 0:
-        raise ValueError("页大小必须是正整数")
+        raise ValueError("page size must be a positive integer")
     if any(type(value) is not int or value < 0 for value in (wired, swapouts)):
-        raise ValueError("wired 与 Swapouts 必须是非负页计数")
+        raise ValueError("wired and Swapouts must be non-negative page counts")
     return {
         "mono": monotonic_time(row),
         "page": page,
@@ -43,7 +43,7 @@ def event(events, kind, label=None):
         if row["kind"] == kind and (label is None or row.get("label") == label)
     ]
     if len(matches) != 1:
-        raise ValueError(f"需要唯一的事件: {kind} {label or ''}".rstrip())
+        raise ValueError(f"expected exactly one event: {kind} {label or ''}".rstrip())
     return matches[0]
 
 
@@ -52,7 +52,7 @@ def idle_point(samples, anchor, offset):
     sample = min(samples, key=lambda row: abs(row["mono"] - target))
     skew = sample["mono"] - target
     if abs(skew) > MAX_SKEW_S:
-        raise ValueError(f"T+{offset} 缺少足够接近的采样")
+        raise ValueError(f"T+{offset} has no sample close enough")
     return {"system_wired_gib": sample["system_wired_gib"], "sample_skew_s": skew}
 
 
@@ -61,7 +61,7 @@ def pressure_bounds(events, label):
     end_event = event(events, "pressure_end", label)
     end = monotonic_time(end_event)
     if start >= end or end_event["returncode"] != 0:
-        raise ValueError(f"{label} 压力区间无效")
+        raise ValueError(f"{label} pressure window is invalid")
     return start, end
 
 
@@ -70,11 +70,11 @@ def pressure_window(samples, bounds, label):
     boundary = [row for row in samples if row["mono"] <= start]
     inside = [row for row in samples if start < row["mono"] <= end]
     if not boundary or not inside:
-        raise ValueError(f"{label} 压力区间缺少前置或区间内采样")
+        raise ValueError(f"{label} pressure window lacks a preceding or in-window sample")
     series = [boundary[-1], *inside]
     times = [row["mono"] for row in series] + [end]
     if any(b - a > MAX_SKEW_S for a, b in pairwise(times)):
-        raise ValueError(f"{label} 压力区间采样间断")
+        raise ValueError(f"{label} pressure window has a sampling gap")
     return {
         "duration_s": end - start,
         "system_wired_min_gib": min(row["system_wired_gib"] for row in inside),
@@ -104,9 +104,9 @@ def replay(directory):
     if end_event["aborted"] is not False or any(
         row["kind"] == "watchdog_abort" for row in events
     ):
-        raise ValueError("试验中止")
+        raise ValueError("experiment aborted")
     if unload_event["result"]["status"] != "ok":
-        raise ValueError("卸载失败")
+        raise ValueError("unload failed")
     windows = {label: pressure_bounds(events, label) for label in ("warm", "cold")}
     warm_start, warm_end = windows["warm"]
     cold_start, cold_end = windows["cold"]
@@ -114,19 +114,19 @@ def replay(directory):
         anchor < warm_start < warm_end < cold_start < cold_end <= complete
         and anchor + 310 <= complete <= unload <= final["mono"] <= end
     ):
-        raise ValueError("idle、压力窗口、试验完成、卸载和最终采样的时序无效")
+        raise ValueError("invalid ordering of idle, pressure windows, experiment completion, unload, and final sample")
     if len(samples) < 2 or any(a["mono"] >= b["mono"] for a, b in pairwise(samples)):
-        raise ValueError("系统采样不足或 monotonic 时间未严格递增")
+        raise ValueError("too few system samples or monotonic time not strictly increasing")
     if samples[-1]["mono"] > final["mono"]:
-        raise ValueError("最终采样早于系统样本末尾")
+        raise ValueError("final sample precedes the end of the system samples")
     series = [*samples, final]
     if any(row["page"] != final["page"] for row in series):
-        raise ValueError("试验期间页大小不一致")
+        raise ValueError("page size changed during the experiment")
     if any(a["swapouts"] > b["swapouts"] for a, b in pairwise(series)):
-        raise ValueError("Swapouts 计数回退")
+        raise ValueError("Swapouts counter went backwards")
     active_samples = [row for row in samples if anchor <= row["mono"] <= complete]
     if not active_samples:
-        raise ValueError("试验期间缺少采样")
+        raise ValueError("no samples during the experiment")
 
     return {
         "run_id": directory.name,
@@ -154,13 +154,13 @@ def replay(directory):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "runs", nargs="+", type=Path, help="包含原始采样和事件的实验目录"
+        "runs", nargs="+", type=Path, help="experiment directories containing raw samples and events"
     )
     args = parser.parse_args()
     try:
         runs = [replay(directory) for directory in args.runs]
     except (OSError, KeyError, TypeError, ValueError) as exc:
-        parser.exit(2, f"无法回放: {exc}\n")
+        parser.exit(2, f"cannot replay: {exc}\n")
     print(json.dumps({"schema": 1, "scope": "historical", "runs": runs}, indent=2))
 
 

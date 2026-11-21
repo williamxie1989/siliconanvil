@@ -1,28 +1,28 @@
-# ID	前置任务（逗号分隔）	验收目标
-EV-001		核对当前架构、运行基线与风险
-R-001	EV-001	建立独立 Rust 仓库、台账入口和可复跑的上游对照
-R-002	R-001	实现 Rust HTTP 与 SSE 最小契约和模拟后端
-R-003	R-002	用固定 oMLX 版本做协议对照并补齐最小兼容矩阵
-R-004	R-003	验证一个小模型的原生 MLX 推理和资源释放
+# ID	Prerequisites (comma separated)	Acceptance goal
+EV-001		Review the current architecture, runtime baseline, and risks
+R-001	EV-001	Create the independent Rust repository, ledger entry point, and a repeatable upstream comparison
+R-002	R-001	Implement the minimal Rust HTTP and SSE contract with a mock backend
+R-003	R-002	Compare the protocol against a pinned oMLX version and fill the minimum compatibility matrix
+R-004	R-003	Verify native MLX inference and resource release for one small model
 R-004A	R-004	Serve the verified MLX model over HTTP with bounded worker ownership and shutdown
-R-005	R-004A	核对发布名、授权、发行包、硬件验证与兼容表
-R-006	R-005	发布首个有实测原生推理能力的公开版本
-EV-002	EV-001,R-003	沿用历史回放并补齐隔离的现版实机基线
-EV-003	EV-001	建立 SSE、工具调用和取消的兼容基线
-GATE-P0	EV-002,EV-003	核对当前版本基线与兼容性证据
-EV-101	EV-002	统一只读观测口径和采样状态
-EV-102	EV-101	记录 idle、请求边界和卸载时序
-EV-103	EV-102	验证同条件 residency 对照与恢复
-EV-104	EV-103	有准入缺口证据时改进 Guard 并回归
-GATE-P1	GATE-P0,EV-103	核对内存稳定性及独立 Supervisor 的实际用途
-EV-201	GATE-P1	定义 Supervisor 版本化协议
-EV-202	EV-201,EV-101	构建只读 Rust Supervisor 并验证故障隔离
-EV-203	EV-202	验证 UDS 和 Shadow 失效回退
-EV-204	EV-203,EV-104	验证 Advisory 安全点及 48 小时长跑
-EV-301	GATE-P0	定义纯调度策略契约
-EV-302	EV-301	用历史快照验证 Rust 策略行为一致性
-EV-303	EV-302	测量 PyO3 Shadow 和 FFI 开销
-EV-304	EV-303	在验证门槛达标后试用 Rust 调度策略
-EV-401	GATE-P0	定位端到端 Expert 或 SSD 热点
-EV-402	EV-401	实测 I/O 瓶颈成立后验证 Rust PoC
-EV-501	GATE-P1	汇总 P2–P4 已获得证据并形成架构决策
+R-005	R-004A	Confirm release name, licensing, distribution artifacts, hardware verification, and the compatibility table
+R-006	R-005	Publish the first public release with measured native inference
+EV-002	EV-001,R-003	Reuse the historical replay and add an isolated current-version hardware baseline
+EV-003	EV-001	Establish the SSE, tool-call, and cancellation compatibility baseline
+GATE-P0	EV-002,EV-003	Confirm the current version baseline and compatibility evidence
+EV-101	EV-002	Unify the read-only observation definition and sampling state
+EV-102	EV-101	Record idle, request-boundary, and unload timing
+EV-103	EV-102	Verify same-condition residency comparison and recovery
+EV-104	EV-103	Improve the guard and regress when admission-gap evidence exists
+GATE-P1	GATE-P0,EV-103	Confirm memory stability and the practical purpose of a separate supervisor
+EV-201	GATE-P1	Define the versioned supervisor protocol
+EV-202	EV-201,EV-101	Build the read-only Rust supervisor and verify fault isolation
+EV-203	EV-202	Verify UDS and shadow failure fallback
+EV-204	EV-203,EV-104	Verify the advisory safe point and a 48-hour soak
+EV-301	GATE-P0	Define the pure scheduling policy contract
+EV-302	EV-301	Verify Rust policy behavior against historical snapshots
+EV-303	EV-302	Measure PyO3 shadow and FFI overhead
+EV-304	EV-303	Try the Rust scheduling policy after the verification threshold is met
+EV-401	GATE-P0	Locate the end-to-end expert or SSD hot spot
+EV-402	EV-401	Verify a Rust PoC after the I/O bottleneck is measured
+EV-501	GATE-P1	Summarize the evidence from P2-P4 and form an architecture decision

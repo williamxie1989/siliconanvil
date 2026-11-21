@@ -13,13 +13,13 @@ The fixture removes volatile response IDs, timestamps, and timing values. The ca
 
 ## Reproduce
 
-Build and compare against the checked-in fixture from the oMLX-R checkout:
+Build and compare against the checked-in fixture from the SiliconAnvil checkout:
 
 ```sh
 cargo build --locked
 python3 benchmarks/rust_evolution/protocol_contract.py compare \
-  benchmarks/rust_evolution/fixtures/omlx-v0.8.2-contract.json target/debug/omlx-r
-OMLX_R_TEST_BINARY=target/debug/omlx-r python3 -m unittest discover -s benchmarks/rust_evolution
+  benchmarks/rust_evolution/fixtures/omlx-v0.8.2-contract.json target/debug/siliconanvil
+SILICONANVIL_TEST_BINARY=target/debug/siliconanvil python3 -m unittest discover -s benchmarks/rust_evolution
 ```
 
 To recapture the reference, prepare a clean checkout of the exact commit and use a Python environment with the pinned oMLX runtime and test dependencies. The fixture records the Python and FastAPI versions used for this capture.

@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: Apache-2.0
-"""Local task state and evidence for the oMLX Rust evolution project."""
+"""Local task state and evidence for the SiliconAnvil project."""
 
 import argparse
 import json
@@ -36,7 +36,7 @@ def catalog():
         task, prerequisites, title = line.split("\t")
         depends = prerequisites.split(",") if prerequisites else []
         if task in tasks or any(dep not in tasks for dep in depends):
-            raise ValueError(f"任务重复，或前置任务未先定义: {task}")
+            raise ValueError(f"duplicate task or prerequisite defined later: {task}")
         tasks[task] = {"id": task, "title": title, "depends": depends}
     return tasks
 
@@ -95,20 +95,20 @@ def write_event(db, task, action, args, current):
         "finish": {"active"},
     }
     if current["state"] not in states[action]:
-        raise ValueError(f"{task} 当前状态 {current['state']}，无法执行 {action}")
+        raise ValueError(f"{task} is {current['state']}; cannot {action}")
     if action == "start" and current["waiting"]:
-        raise ValueError(f"{task} 等待 {', '.join(current['waiting'])}")
+        raise ValueError(f"{task} waits for {', '.join(current['waiting'])}")
     summary = (args.summary or "").strip()
     if action != "start" and not summary:
-        raise ValueError("请提供 --summary")
+        raise ValueError("--summary is required")
     if action == "finish" and not args.evidence:
-        raise ValueError("请提供至少一个 --evidence 文件或目录")
+        raise ValueError("finish requires at least one --evidence file or directory")
 
     evidence = []
     for value in args.evidence:
         path = Path(value).expanduser().resolve()
         if not path.exists():
-            raise ValueError(f"证据路径不存在: {path}")
+            raise ValueError(f"evidence path does not exist: {path}")
         evidence.append(str(path))
 
     head = subprocess.check_output(
@@ -137,7 +137,7 @@ def dispatch(db, tasks, args):
     command = args.command
     task = getattr(args, "task", None)
     if task and task not in tasks:
-        raise ValueError(f"未知任务: {task}")
+        raise ValueError(f"unknown task: {task}")
     if command in {"start", "note", "block", "finish"}:
         db.execute("BEGIN IMMEDIATE")
         return write_event(db, task, command, args, progress(db, tasks)[task])
@@ -174,7 +174,7 @@ def print_result(args, result):
     if args.command == "status":
         for item in result:
             waiting = (
-                f"（等待 {', '.join(item['waiting'])}）" if item["waiting"] else ""
+                f" (waiting for {', '.join(item['waiting'])})" if item["waiting"] else ""
             )
             state = (
                 "ready" if item["state"] == "pending" and not waiting else item["state"]
@@ -183,15 +183,15 @@ def print_result(args, result):
         return
     focus = result["focus"]
     if focus:
-        print(f"当前任务 {focus['id']} · {focus['state']} · {focus['title']}")
+        print(f"focus {focus['id']} · {focus['state']} · {focus['title']}")
         if focus["next"]:
-            print(f"续做动作  {focus['next']}")
+            print(f"next      {focus['next']}")
     else:
-        print("当前没有可续做的任务")
+        print("no task to resume")
     for key, label in (
-        ("active", "进行中"),
-        ("ready", "可开始"),
-        ("blocked", "已阻塞"),
+        ("active", "active"),
+        ("ready", "ready"),
+        ("blocked", "blocked"),
     ):
         ids = ", ".join(item["id"] for item in result[key])
         print(f"{label}  {ids or '—'}")
@@ -205,7 +205,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, default=DEFAULT_DB)
     parser.add_argument(
-        "--repo", type=Path, default=ROOT, help="事件 HEAD 所属的检出目录"
+        "--repo", type=Path, default=ROOT, help="checkout whose HEAD the event records"
     )
     parser.add_argument("--json", action="store_true")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -225,7 +225,7 @@ def main():
     args = parser.parse_args()
     try:
         if getattr(args, "limit", 1) < 1:
-            raise ValueError("--limit 必须大于零")
+            raise ValueError("--limit must be greater than zero")
         path = args.db.expanduser()
         path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         with closing(sqlite3.connect(path, timeout=10)) as db, db:
