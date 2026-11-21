@@ -10,8 +10,10 @@ use mlex::tokenizer::ChatMessage;
 use serde::Serialize;
 use serde_json::{json, Value};
 
+use crate::server::worker::{Engine, JobOutput, Reply, MAX_TOKENS};
+use crate::server::{Message, Role};
+
 const MAX_WEIGHT_BYTES: u64 = 1 << 30;
-const MAX_TOKENS: usize = 32;
 const ROUNDS: usize = 2;
 const RELEASE_TOLERANCE: usize = 16 << 20;
 const MLX_GPU: c_int = 1;
@@ -118,7 +120,7 @@ fn checkpoint_bytes(path: &Path) -> Result<u64, String> {
     }
     let config = read_json(&path.join("config.json"))?;
     if config["model_type"] != "qwen2" {
-        return Err("native-smoke supports a small, single-file Qwen2 checkpoint".into());
+        return Err("native MLX requires a small, single-file Qwen2 checkpoint".into());
     }
     let index = path.join("model.safetensors.index.json");
     if index.exists() {
@@ -127,7 +129,7 @@ fn checkpoint_bytes(path: &Path) -> Result<u64, String> {
             .as_object()
             .ok_or("checkpoint index has no weight map")?;
         if map.is_empty() || map.values().any(|file| file != "model.safetensors") {
-            return Err("native-smoke requires a single model.safetensors weight file".into());
+            return Err("native MLX requires a single model.safetensors weight file".into());
         }
     }
     let weights = path.join("model.safetensors");
@@ -147,7 +149,7 @@ fn checkpoint_bytes(path: &Path) -> Result<u64, String> {
             .is_some_and(|value| value.ends_with(".safetensors"))
             && name != "model.safetensors"
         {
-            return Err("native-smoke does not load extra tensor files".into());
+            return Err("native MLX does not load extra tensor files".into());
         }
     }
     Ok(file.len())
@@ -197,11 +199,7 @@ fn generate(path: &Path, prompt: &str) -> Result<(GenerateReply, Allocator), Str
     Ok((reply, allocator()?))
 }
 
-pub fn smoke(path: &Path, prompt: &str) -> Result<(), String> {
-    if prompt.trim().is_empty() || prompt.len() > 1024 {
-        return Err("prompt must contain between 1 and 1024 UTF-8 bytes".into());
-    }
-    let bytes = checkpoint_bytes(path)?;
+fn prepare_metal() -> Result<Allocator, String> {
     mlex::error::install_error_handler();
     require_gpu()?;
     let attention_matches = check_attention_kernel()
@@ -209,7 +207,27 @@ pub fn smoke(path: &Path, prompt: &str) -> Result<(), String> {
     if !attention_matches {
         return Err("Metal attention self-check failed; colocate the verified MLX 0.31.2 mlx.metallib with this binary".into());
     }
-    let baseline = cleanup()?;
+    cleanup()
+}
+
+fn verify_release(baseline: &Allocator, released: &Allocator) -> Result<(), String> {
+    if released.active_bytes > baseline.active_bytes.saturating_add(RELEASE_TOLERANCE)
+        || released.cache_bytes > baseline.cache_bytes.saturating_add(RELEASE_TOLERANCE)
+    {
+        return Err(format!(
+            "MLX allocations did not return to baseline: {} active bytes, {} cached bytes",
+            released.active_bytes, released.cache_bytes
+        ));
+    }
+    Ok(())
+}
+
+pub fn smoke(path: &Path, prompt: &str) -> Result<(), String> {
+    if prompt.trim().is_empty() || prompt.len() > 1024 {
+        return Err("prompt must contain between 1 and 1024 UTF-8 bytes".into());
+    }
+    let bytes = checkpoint_bytes(path)?;
+    let baseline = prepare_metal()?;
     let mut rounds = Vec::with_capacity(ROUNDS);
     for _ in 0..ROUNDS {
         // Reset the peak counter immediately before creating the session.
@@ -226,14 +244,7 @@ pub fn smoke(path: &Path, prompt: &str) -> Result<(), String> {
         if loaded.active_bytes <= baseline.active_bytes {
             return Err("MLX active memory did not rise while the checkpoint was loaded".into());
         }
-        if released.active_bytes > baseline.active_bytes.saturating_add(RELEASE_TOLERANCE)
-            || released.cache_bytes > baseline.cache_bytes.saturating_add(RELEASE_TOLERANCE)
-        {
-            return Err(format!(
-                "MLX allocations did not return to baseline: {} active bytes, {} cached bytes",
-                released.active_bytes, released.cache_bytes
-            ));
-        }
+        verify_release(&baseline, &released)?;
         let finish = match reply.finish_reason {
             FinishReason::Stop => "stop",
             FinishReason::Length => "length",
@@ -262,4 +273,133 @@ pub fn smoke(path: &Path, prompt: &str) -> Result<(), String> {
         })
     );
     Ok(())
+}
+
+pub(crate) struct HttpEngine {
+    session: Session,
+    baseline: Allocator,
+}
+
+impl HttpEngine {
+    pub(crate) fn load(path: &Path) -> Result<Self, String> {
+        checkpoint_bytes(path)?;
+        let tokenizer = read_json(&path.join("tokenizer.json"))?;
+        if tokenizer["decoder"]["type"] != "ByteLevel" {
+            return Err("serve-native requires a Qwen2 checkpoint with a ByteLevel decoder".into());
+        }
+        let baseline = prepare_metal()?;
+        let session = Session::load(path).map_err(|error| format!("load checkpoint: {error}"))?;
+        Ok(Self { session, baseline })
+    }
+
+    fn generate_text(&self, messages: Vec<Message>, output: &JobOutput) -> Result<Reply, String> {
+        let messages: Vec<_> = messages
+            .into_iter()
+            .map(|message| match message.role {
+                Role::System => ChatMessage::system(message.content),
+                Role::User => ChatMessage::user(message.content),
+                Role::Assistant => ChatMessage::assistant(message.content),
+            })
+            .collect();
+        let input = self
+            .session
+            .encode_chat(&messages)
+            .map_err(|error| error.to_string())?;
+        if output.is_cancelled() {
+            return Err("generation cancelled".into());
+        }
+        let tokenizer = self.session.tokenizer();
+        let mut ids = Vec::with_capacity(MAX_TOKENS);
+        let mut sent_text = String::new();
+        let mut stream_error = None;
+        let mut finish_reason = "length";
+        self.session
+            .generate(
+                &input,
+                GenerateOptions {
+                    max_tokens: MAX_TOKENS,
+                    ..GenerateOptions::default()
+                },
+                |token| {
+                    if output.is_cancelled() {
+                        return false;
+                    }
+                    if token.finished {
+                        finish_reason = "stop";
+                        return true;
+                    }
+                    ids.push(token.id);
+                    if !output.stream {
+                        return true;
+                    }
+                    let delta = tokenizer
+                        .decode(&ids)
+                        .map_err(|error| format!("decode generated text: {error}"))
+                        .and_then(|decoded| {
+                            // ByteLevel decoding replaces incomplete trailing UTF-8 until more bytes arrive.
+                            let stable = decoded.trim_end_matches('\u{fffd}');
+                            send_delta(output, stable, &mut sent_text)
+                        });
+                    if let Err(error) = delta {
+                        stream_error = Some(error);
+                        return false;
+                    }
+                    true
+                },
+            )
+            .map_err(|error| format!("generate with MLX: {error}"))?;
+        if let Some(error) = stream_error {
+            return Err(error);
+        }
+        if output.is_cancelled() {
+            return Err("generation cancelled".into());
+        }
+        let text = tokenizer.decode(&ids).map_err(|error| error.to_string())?;
+        if output.stream {
+            send_delta(output, &text, &mut sent_text)?;
+        }
+        Ok(Reply {
+            text,
+            finish_reason,
+        })
+    }
+}
+
+fn send_delta(output: &JobOutput, text: &str, sent: &mut String) -> Result<(), String> {
+    let suffix = text
+        .strip_prefix(sent.as_str())
+        .ok_or("decoded text changed after it was sent")?;
+    if !suffix.is_empty() && !output.text(suffix.into()) {
+        return Err("could not send generated text".into());
+    }
+    sent.push_str(suffix);
+    Ok(())
+}
+
+impl Engine for HttpEngine {
+    fn generate(&mut self, messages: Vec<Message>, output: &JobOutput) -> Result<Reply, String> {
+        let reply = self.generate_text(messages, output);
+        let synchronized =
+            synchronize().map_err(|error| format!("complete MLX generation: {error}"));
+        reply.and_then(|reply| synchronized.map(|()| reply))
+    }
+
+    fn shutdown(self) -> Result<(), String> {
+        let Self { session, baseline } = self;
+        let synchronized =
+            synchronize().map_err(|error| format!("synchronize before unloading MLX: {error}"));
+        drop(session);
+        let released = cleanup()?;
+        println!(
+            "{}",
+            json!({
+                "event": "native_shutdown",
+                "baseline": baseline,
+                "released": released,
+                "release_tolerance_bytes": RELEASE_TOLERANCE,
+            })
+        );
+        synchronized?;
+        verify_release(&baseline, &released)
+    }
 }

@@ -7,7 +7,7 @@ use std::net::Ipv4Addr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-use axum::extract::{rejection::JsonRejection, DefaultBodyLimit};
+use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, State};
 use axum::http::StatusCode;
 use axum::response::{
     sse::{Event, Sse},
@@ -20,6 +20,17 @@ use serde::de::{value::MapAccessDeserializer, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use serde_json::{json, Value};
 use tokio::net::TcpListener;
+
+#[cfg(any(
+    test,
+    all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")
+))]
+pub(crate) mod worker;
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+mod native_http;
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+pub(crate) use native_http::serve_native;
 
 const MODEL: &str = "omlx-r-mock";
 const TEXT: [&str; 2] = ["Hello", " from oMLX-R."];
@@ -62,35 +73,59 @@ struct ChatRequest {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Message {
-    #[serde(rename = "role")]
-    _role: Role,
-    #[serde(rename = "content")]
-    _content: String,
+#[cfg_attr(
+    not(any(
+        test,
+        all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")
+    )),
+    allow(dead_code)
+)]
+pub(crate) struct Message {
+    pub role: Role,
+    pub content: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
-enum Role {
+pub(crate) enum Role {
     System,
     User,
     Assistant,
 }
 
+#[derive(Clone, Default)]
+struct App {
+    #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+    native: Option<worker::Client>,
+}
+
+impl App {
+    fn model(&self) -> &'static str {
+        #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+        if self.native.is_some() {
+            return native_http::MODEL;
+        }
+        MODEL
+    }
+}
+
 struct Completion {
     id: String,
     created: u64,
+    model: &'static str,
 }
 
 impl Completion {
-    fn new() -> Self {
+    fn new(model: &'static str) -> Self {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
+        let backend = if model == MODEL { "mock" } else { "native" };
         Self {
-            id: format!("chatcmpl-mock-{}-{id}", std::process::id()),
+            id: format!("chatcmpl-{backend}-{}-{id}", std::process::id()),
             created: SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_secs(),
+            model,
         }
     }
 
@@ -99,9 +134,21 @@ impl Completion {
             "id": self.id,
             "object": object,
             "created": self.created,
-            "model": MODEL,
+            "model": self.model,
             "choices": [choice],
         })
+    }
+
+    fn response(&self, text: String, finish_reason: &str) -> Response {
+        Json(self.body(
+            "chat.completion",
+            json!({
+                "index": 0,
+                "message": {"role": "assistant", "content": text},
+                "finish_reason": finish_reason,
+            }),
+        ))
+        .into_response()
     }
 
     fn event(&self, delta: Value, finish_reason: Option<&str>) -> Event {
@@ -139,10 +186,10 @@ impl Completion {
     }
 }
 
-async fn models() -> Json<Value> {
+async fn models(State(app): State<App>) -> Json<Value> {
     Json(json!({
         "object": "list",
-        "data": [{"id": MODEL, "object": "model", "created": 0, "owned_by": "omlx-r"}],
+        "data": [{"id": app.model(), "object": "model", "created": 0, "owned_by": "omlx-r"}],
     }))
 }
 
@@ -156,7 +203,10 @@ fn invalid_request(status: StatusCode, code: &str, message: &str) -> Response {
         .into_response()
 }
 
-async fn chat(request: Result<Json<JsonObject<ChatRequest>>, JsonRejection>) -> Response {
+async fn chat(
+    State(app): State<App>,
+    request: Result<Json<JsonObject<ChatRequest>>, JsonRejection>,
+) -> Response {
     let Json(JsonObject(request)) = match request {
         Ok(request) => request,
         Err(error) => {
@@ -174,26 +224,30 @@ async fn chat(request: Result<Json<JsonObject<ChatRequest>>, JsonRejection>) -> 
             "messages must contain at least one message",
         );
     }
-    if request.model != MODEL {
+    if request.model != app.model() {
         return invalid_request(
             StatusCode::NOT_FOUND,
             "model_not_found",
             "requested model is unavailable",
         );
     }
-    let completion = Completion::new();
+    let completion = Completion::new(app.model());
+    #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+    if let Some(worker) = app.native {
+        return native_http::chat(worker, completion, request).await;
+    }
     if request.stream {
         return completion.stream();
     }
-    Json(completion.body(
-        "chat.completion",
-        json!({
-            "index": 0,
-            "message": {"role": "assistant", "content": TEXT.concat()},
-            "finish_reason": "stop",
-        }),
-    ))
-    .into_response()
+    completion.response(TEXT.concat(), "stop")
+}
+
+fn router(app: App) -> Router {
+    Router::new()
+        .route("/v1/models", get(models))
+        .route("/v1/chat/completions", post(chat))
+        .layer(DefaultBodyLimit::max(MAX_REQUEST_BYTES))
+        .with_state(app)
 }
 
 pub fn serve(port: u16) -> io::Result<()> {
@@ -202,11 +256,7 @@ pub fn serve(port: u16) -> io::Result<()> {
         .build()?;
     runtime.block_on(async {
         let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, port)).await?;
-        let router = Router::new()
-            .route("/v1/models", get(models))
-            .route("/v1/chat/completions", post(chat))
-            .layer(DefaultBodyLimit::max(MAX_REQUEST_BYTES));
         println!("Listening on http://{}", listener.local_addr()?);
-        axum::serve(listener, router).await
+        axum::serve(listener, router(App::default())).await
     })
 }

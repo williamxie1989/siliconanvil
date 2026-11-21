@@ -2,7 +2,7 @@
 
 oMLX-R is the working name of an independent Rust inference project for Apple Silicon, inspired by [oMLX](https://github.com/jundot/omlx).
 
-Current milestone: a local Rust HTTP/SSE service with a deterministic mock backend and an upstream comparison command. Inference, oMLX compatibility validation, and performance testing are future milestones.
+The Rust HTTP/SSE service offers a deterministic mock backend and an opt-in native MLX backend for the verified Qwen2.5-0.5B 4-bit checkpoint on Apple Silicon.
 
 ## Development
 
@@ -23,6 +23,6 @@ curl -N "$BASE_URL/v1/chat/completions" \
 
 See the [mock HTTP/SSE contract](docs/r-002-http-contract.md) for supported request fields and integration tests.
 
-The optional [native MLX smoke command](docs/r-004-native-mlx.md) runs a small local Qwen2 model on Metal and measures allocator cleanup. It requires a verified Metal library beside the executable.
+Use `serve-native <checkpoint-dir>` for local Metal-backed chat completions or `native-smoke <checkpoint-dir>` to check generation and allocator cleanup. Both commands require the optional build and a verified Metal library beside the executable. See the [native MLX build and HTTP contract](docs/r-004-native-mlx.md).
 
 Use the [project workflow](docs/project-workflow.md) to resume work across sessions and compare a pinned oMLX commit with upstream changes.

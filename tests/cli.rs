@@ -14,6 +14,29 @@ fn native_smoke_requires_the_opt_in_backend() {
     assert!(String::from_utf8_lossy(&output.stderr).contains("native-mlx"));
 }
 
+#[test]
+fn native_http_reports_a_startup_error_before_announcing_a_port() {
+    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        .args(["serve-native", "missing-checkpoint", "--port", "0"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    if cfg!(all(
+        feature = "native-mlx",
+        target_os = "macos",
+        target_arch = "aarch64"
+    )) {
+        assert!(stderr.contains("local checkpoint directory"), "{stderr}");
+    } else {
+        assert!(
+            stderr.contains("requires an Apple Silicon macOS build"),
+            "{stderr}"
+        );
+    }
+}
+
 #[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
 #[test]
 fn native_smoke_rejects_a_missing_local_checkpoint() {

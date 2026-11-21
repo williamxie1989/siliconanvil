@@ -4,7 +4,28 @@ The first native path is a local, one-shot Rust command behind the `native-mlx` 
 
 The smoke runs bounded text generation on a small local Qwen checkpoint, then synchronizes, drops the session, clears the process-local allocator cache, and repeats. Its JSON report records text, token counts, and allocator bytes before load, after generation with the session still live, and after cleanup. Both cycles must return live and cached allocation to the startup baseline within tolerance.
 
-The first milestone covers the Rust command and memory lifecycle. It builds the default HTTP fixture separately. R-004A is the pre-release milestone for native HTTP serving. It will own the native session on a dedicated worker and verify bounded admission and shutdown. Distribution of the Metal kernel library remains a release task.
+The first milestone covers the Rust command and memory lifecycle. R-004A serves the same verified checkpoint through the existing HTTP routes. Distribution of the Metal kernel library remains a release task.
+
+## Native HTTP contract
+
+Run `target/debug/omlx-r serve-native /path/to/local-checkpoint --port 0` with the same native build and verified Metal library. The service announces its IPv4 loopback address after preflight and model load. `GET /v1/models` lists `omlx-r-native`. Send that ID in `POST /v1/chat/completions` with the text-only request fields used by the mock. Native requests accept up to 32 messages and 4,096 UTF-8 content bytes in total. The Qwen2 checkpoint must have a ByteLevel decoder.
+
+One dedicated thread loads, uses, and drops the session. It admits one generation at a time. Concurrent requests receive HTTP 503 with `worker_busy` before SSE headers. The model list stays available during generation. Requests use greedy decoding, fresh generation caches, and a 32-token cap. Output is plain text with `stop` or `length`. A successful stream emits the assistant role, text deltas, one finish frame, and one `[DONE]`. The bounded output channel uses nonblocking sends. A generation failure returns HTTP 500 for JSON or an SSE error followed by EOF for streaming.
+
+Closing the HTTP response cancels generation at the next decoder callback. SIGINT or SIGTERM closes admission and requests the same cooperative cancellation. The server allows up to two seconds to drain HTTP, then closes remaining connections and joins the worker. The worker synchronizes MLX, drops the session, clears the allocator cache, and reports live and cached bytes against the startup baseline. A running Metal operation must return before its thread can be joined.
+
+Verify admission, cancellation, and worker cleanup with a scripted backend first. Then run the native HTTP integration tests on a kernel-assigned port with the pinned checkpoint, comparing JSON with SSE and checking allocator counters after both idle and in-flight shutdown.
+
+```sh
+cargo test --locked
+OMLX_R_TEST_BINARY=target/debug/omlx-r \
+  OMLX_R_TEST_CHECKPOINT=/path/to/local-checkpoint \
+  python3 -m unittest discover -s benchmarks/rust_evolution -p test_native_http.py
+```
+
+Run the Python command after rebuilding with `--features native-mlx` and colocating the verified Metal library.
+
+On the Mac17,6 with macOS 26.5.1, JSON and SSE produced the same English and Chinese text. The counting prompt reached the generation limit and emitted `length`. Five runs of idle SIGINT and five runs of SIGTERM after the first visible delta each returned live and cached MLX allocation to zero. The interrupted stream emitted an error and closed before the success frames.
 
 ## Build and run
 

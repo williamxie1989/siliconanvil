@@ -9,7 +9,7 @@ mod server;
 
 const REFERENCE: &str = include_str!("../upstream/reference-commit");
 const UPSTREAM_MAIN: &str = "refs/remotes/origin/main";
-const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]\n       omlx-r native-smoke <checkpoint-dir> [--prompt <text>]";
+const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]\n       omlx-r serve-native <checkpoint-dir> [--port <port>]\n       omlx-r native-smoke <checkpoint-dir> [--prompt <text>]";
 
 fn git(repo: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new("git")
@@ -96,11 +96,13 @@ fn run() -> Result<ExitCode, String> {
         }
         [command] if command == "serve" => serve(0)?,
         [command, flag, value] if command == "serve" && flag == "--port" => {
-            let port = value
-                .to_str()
-                .and_then(|value| value.parse::<u16>().ok())
-                .ok_or("port must be an integer between 0 and 65535")?;
-            serve(port)?;
+            serve(parse_port(value)?)?;
+        }
+        [command, path] if command == "serve-native" => {
+            serve_native(Path::new(path), 0)?;
+        }
+        [command, path, flag, value] if command == "serve-native" && flag == "--port" => {
+            serve_native(Path::new(path), parse_port(value)?)?;
         }
         [command, path] if command == "upstream-status" => {
             return upstream_status(Path::new(path), REFERENCE.trim());
@@ -128,6 +130,26 @@ fn native_smoke(_path: &Path, _prompt: &str) -> Result<(), String> {
 
 fn serve(port: u16) -> Result<(), String> {
     server::serve(port).map_err(|error| format!("could not serve on 127.0.0.1:{port}: {error}"))
+}
+
+fn parse_port(value: &std::ffi::OsStr) -> Result<u16, String> {
+    value
+        .to_str()
+        .and_then(|value| value.parse::<u16>().ok())
+        .ok_or_else(|| "port must be an integer between 0 and 65535".into())
+}
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+fn serve_native(path: &Path, port: u16) -> Result<(), String> {
+    let path = path.to_path_buf();
+    server::serve_native(port, || {
+        server::worker::Worker::start(move || native::HttpEngine::load(&path))
+    })
+}
+
+#[cfg(not(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")))]
+fn serve_native(_path: &Path, _port: u16) -> Result<(), String> {
+    Err("serve-native requires an Apple Silicon macOS build with --features native-mlx".into())
 }
 
 fn main() -> ExitCode {
