@@ -3,11 +3,13 @@ use std::env;
 use std::path::Path;
 use std::process::{Command, ExitCode};
 
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+mod native;
 mod server;
 
 const REFERENCE: &str = include_str!("../upstream/reference-commit");
 const UPSTREAM_MAIN: &str = "refs/remotes/origin/main";
-const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]";
+const USAGE: &str = "Usage: omlx-r --version\n       omlx-r upstream-status <reference-repo> [--baseline <commit-sha>]\n       omlx-r serve [--port <port>]\n       omlx-r native-smoke <checkpoint-dir> [--prompt <text>]";
 
 fn git(repo: &Path, args: &[&str]) -> Result<String, String> {
     let output = Command::new("git")
@@ -83,6 +85,15 @@ fn run() -> Result<ExitCode, String> {
     match args.as_slice() {
         [flag] if flag == "--version" => println!("omlx-r {}", env!("CARGO_PKG_VERSION")),
         [flag] if flag == "--help" => println!("{USAGE}"),
+        [command, path] if command == "native-smoke" => {
+            native_smoke(Path::new(path), "What is 2 + 2? Answer briefly.")?;
+        }
+        [command, path, flag, prompt] if command == "native-smoke" && flag == "--prompt" => {
+            native_smoke(
+                Path::new(path),
+                prompt.to_str().ok_or("prompt must be UTF-8")?,
+            )?;
+        }
         [command] if command == "serve" => serve(0)?,
         [command, flag, value] if command == "serve" && flag == "--port" => {
             let port = value
@@ -103,6 +114,16 @@ fn run() -> Result<ExitCode, String> {
         _ => return Err(USAGE.into()),
     }
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+fn native_smoke(path: &Path, prompt: &str) -> Result<(), String> {
+    native::smoke(path, prompt)
+}
+
+#[cfg(not(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")))]
+fn native_smoke(_path: &Path, _prompt: &str) -> Result<(), String> {
+    Err("native-smoke requires an Apple Silicon macOS build with --features native-mlx".into())
 }
 
 fn serve(port: u16) -> Result<(), String> {

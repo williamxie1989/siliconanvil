@@ -23,4 +23,6 @@ curl -N "$BASE_URL/v1/chat/completions" \
 
 See the [mock HTTP/SSE contract](docs/r-002-http-contract.md) for supported request fields and integration tests.
 
+The optional [native MLX smoke command](docs/r-004-native-mlx.md) runs a small local Qwen2 model on Metal and measures allocator cleanup. It requires a verified Metal library beside the executable.
+
 Use the [project workflow](docs/project-workflow.md) to resume work across sessions and compare a pinned oMLX commit with upstream changes.

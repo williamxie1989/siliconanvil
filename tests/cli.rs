@@ -3,19 +3,92 @@ use std::path::PathBuf;
 use std::process::{Command, Output};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[cfg(not(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64")))]
+#[test]
+fn native_smoke_requires_the_opt_in_backend() {
+    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        .args(["native-smoke", "missing-checkpoint"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("native-mlx"));
+}
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+#[test]
+fn native_smoke_rejects_a_missing_local_checkpoint() {
+    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        .args(["native-smoke", "missing-checkpoint"])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("local checkpoint directory"));
+}
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+#[test]
+fn native_smoke_rejects_a_hidden_extra_tensor_file_before_loading() {
+    let directory = Reference::scratch();
+    std::fs::write(directory.0.join("config.json"), r#"{"model_type":"qwen2"}"#).unwrap();
+    std::fs::write(directory.0.join("model.safetensors"), b"placeholder").unwrap();
+    std::fs::write(directory.0.join(".safetensors"), b"extra").unwrap();
+    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        .arg("native-smoke")
+        .arg(&directory.0)
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("extra tensor files"));
+}
+
+#[cfg(all(feature = "native-mlx", target_os = "macos", target_arch = "aarch64"))]
+#[test]
+#[ignore = "requires a local small Qwen2 MLX checkpoint and Apple Silicon hardware"]
+fn native_smoke_generates_and_releases_the_checkpoint() {
+    let checkpoint = std::env::var_os("OMLX_R_TEST_CHECKPOINT")
+        .expect("point OMLX_R_TEST_CHECKPOINT at the local Qwen2 checkpoint");
+    let output = Command::new(env!("CARGO_BIN_EXE_omlx-r"))
+        .arg("native-smoke")
+        .arg(checkpoint)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let report: serde_json::Value = serde_json::from_slice(&output.stdout).unwrap();
+    let rounds = report["rounds"].as_array().unwrap();
+    assert_eq!(report["device"], "metal");
+    assert_eq!(rounds.len(), 2);
+    let baseline = report["baseline"]["active_bytes"].as_u64().unwrap();
+    let tolerance = report["release_tolerance_bytes"].as_u64().unwrap();
+    for round in rounds {
+        assert_eq!(round["text"], "2 + 2 equals 4.");
+        assert_eq!(round["output_tokens"], 9);
+        assert_eq!(round["finish_reason"], "stop");
+        assert!(round["loaded"]["active_bytes"].as_u64().unwrap() > baseline);
+        assert!(round["released"]["active_bytes"].as_u64().unwrap() <= baseline + tolerance);
+    }
+}
+
 struct Reference(PathBuf);
 
 impl Reference {
     fn new() -> Self {
+        let reference = Self::scratch();
+        reference.git(&["init", "-q", "-b", "main"]);
+        reference
+    }
+
+    fn scratch() -> Self {
         let stamp = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
             .as_nanos();
         let path = std::env::temp_dir().join(format!("omlx-r-test-{}-{stamp}", std::process::id()));
         std::fs::create_dir(&path).unwrap();
-        let reference = Self(path);
-        reference.git(&["init", "-q", "-b", "main"]);
-        reference
+        Self(path)
     }
 
     fn git(&self, args: &[&str]) -> String {

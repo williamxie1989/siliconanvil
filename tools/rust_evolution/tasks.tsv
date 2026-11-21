@@ -4,7 +4,8 @@ R-001	EV-001	建立独立 Rust 仓库、台账入口和可复跑的上游对照
 R-002	R-001	实现 Rust HTTP 与 SSE 最小契约和模拟后端
 R-003	R-002	用固定 oMLX 版本做协议对照并补齐最小兼容矩阵
 R-004	R-003	验证一个小模型的原生 MLX 推理和资源释放
-R-005	R-004	核对发布名、授权、发行包、硬件验证与兼容表
+R-004A	R-004	Serve the verified MLX model over HTTP with bounded worker ownership and shutdown
+R-005	R-004A	核对发布名、授权、发行包、硬件验证与兼容表
 R-006	R-005	发布首个有实测原生推理能力的公开版本
 EV-002	EV-001,R-003	沿用历史回放并补齐隔离的现版实机基线
 EV-003	EV-001	建立 SSE、工具调用和取消的兼容基线
