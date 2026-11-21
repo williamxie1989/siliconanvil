@@ -1,6 +1,6 @@
-# oMLX-R
+# AlderRelay
 
-oMLX-R is the working name of an independent Rust inference project for Apple Silicon, inspired by [oMLX](https://github.com/jundot/omlx).
+AlderRelay is an independent Rust inference project for Apple Silicon, inspired by [oMLX](https://github.com/jundot/omlx). Early development used the working name oMLX-R.
 
 The Rust HTTP/SSE service offers a deterministic mock backend and an opt-in native MLX backend for the verified Qwen2.5-0.5B 4-bit checkpoint on Apple Silicon.
 
