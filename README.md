@@ -4,6 +4,8 @@ SiliconAnvil is an independent Rust project for Metal-accelerated local LLM infe
 
 The Rust HTTP/SSE service offers a deterministic mock backend and an opt-in native MLX backend for the verified Qwen2.5-0.5B 4-bit checkpoint on Apple Silicon.
 
+Version 0.1.0 is a source release under the [Apache License 2.0](LICENSE). Build locally with Cargo. The executable is named `omlx-r`. For native inference, supply the compatible Metal library and pinned checkpoint described in the [native setup guide](docs/r-004-native-mlx.md).
+
 ## Development
 
 ```sh
