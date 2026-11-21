@@ -12,10 +12,10 @@ The implementation order was real-TCP failure cases, then the Rust routes and re
 
 ```sh
 cargo build --locked
-SILICONANVIL_TEST_BINARY=target/debug/siliconanvil python3 -m unittest discover -s benchmarks/rust_evolution
+SILICONANVIL_TEST_BINARY=target/debug/siliconanvil python3 -m unittest discover -s benchmarks/contract
 cargo test --locked
 ```
 
 The live TCP tests cover the model list, a non-streaming reply, SSE frame order, error responses, and a request after a client disconnect. The fake server delays response headers and the first text separately to validate the first-token timing definition, and fails the probe when the connection closes early.
 
-To measure a single request, run `python3 benchmarks/rust_evolution/sse_probe.py "$BASE_URL" request.json`. The probe reports TTFT, total duration, finish reason, delta count, and the concatenated text.
+To measure a single request, run `python3 benchmarks/contract/sse_probe.py "$BASE_URL" request.json`. The probe reports TTFT, total duration, finish reason, delta count, and the concatenated text.

@@ -34,7 +34,7 @@ MACOSX_DEPLOYMENT_TARGET=26.0 CMAKE_BUILD_PARALLEL_LEVEL=4 CARGO_TARGET_DIR="$bu
   CFLAGS="-ffile-prefix-map=$HOME=/build-home" CXXFLAGS="-ffile-prefix-map=$HOME=/build-home" \
   cargo build --locked --release --target aarch64-apple-darwin --features native-mlx -j 4
 release="$build/aarch64-apple-darwin/release"
-python3 tools/rust_evolution/package_native.py \
+python3 tools/project/package_native.py \
   --binary "$release/siliconanvil" --wheel "$wheel" \
   --cmake-build "$release"/build/mlex-*/out/build \
   --rust-copyright "$rust_copyright" --compiler-rt-license "$compiler_rt_license" \
@@ -45,7 +45,7 @@ tar -xzf "$candidate" -C "$verify"
 binary="$verify/siliconanvil-native/siliconanvil"
 (cd "$verify" && "$binary" native-smoke "$checkpoint")
 SILICONANVIL_TEST_BINARY="$binary" SILICONANVIL_TEST_CHECKPOINT="$checkpoint" \
-  python3 -m unittest discover -s benchmarks/rust_evolution
+  python3 -m unittest discover -s benchmarks/contract
 ```
 
 Verify from a fresh working directory with the build-tree Metal libraries unavailable. The package manifest records architecture, the Mach-O minimum version, linked system libraries, signature and binary digests. Retain separate evidence for the OS and hardware observed during execution.

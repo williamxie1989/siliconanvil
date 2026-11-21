@@ -13,7 +13,7 @@ These pages document how SiliconAnvil is built, verified, and released. They are
 
 ## Roadmap
 
-`tools/rust_evolution/tasks.tsv` is the machine-readable task graph: task ID, prerequisites, and acceptance goal. The ledger tool in the same directory records events against those IDs.
+`tools/project/tasks.tsv` is the machine-readable task graph: task ID, prerequisites, and acceptance goal. The ledger tool in the same directory records events against those IDs.
 
 - R-001 to R-006: independent repository, minimal HTTP/SSE contract, pinned protocol comparison, native MLX inference, release packaging, first public release.
 - EV-002, EV-003, GATE-P0: current-version baseline and compatibility evidence.

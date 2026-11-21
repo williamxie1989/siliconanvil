@@ -17,17 +17,17 @@ Build and compare against the checked-in fixture from the SiliconAnvil checkout:
 
 ```sh
 cargo build --locked
-python3 benchmarks/rust_evolution/protocol_contract.py compare \
-  benchmarks/rust_evolution/fixtures/omlx-v0.8.2-contract.json target/debug/siliconanvil
-SILICONANVIL_TEST_BINARY=target/debug/siliconanvil python3 -m unittest discover -s benchmarks/rust_evolution
+python3 benchmarks/contract/protocol_contract.py compare \
+  benchmarks/contract/fixtures/omlx-v0.8.2-contract.json target/debug/siliconanvil
+SILICONANVIL_TEST_BINARY=target/debug/siliconanvil python3 -m unittest discover -s benchmarks/contract
 ```
 
 To recapture the reference, prepare a clean checkout of the exact commit and use a Python environment with the pinned oMLX runtime and test dependencies. The fixture records the Python and FastAPI versions used for this capture.
 
 ```sh
-ref="$HOME/omlx-notes/rust-evolution/upstream/v0.8.2"
-python3 benchmarks/rust_evolution/protocol_contract.py capture-upstream "$ref" > /tmp/omlx-reference.json
-diff -u benchmarks/rust_evolution/fixtures/omlx-v0.8.2-contract.json /tmp/omlx-reference.json
+ref="$HOME/.siliconanvil/upstream/v0.8.2"
+python3 benchmarks/contract/protocol_contract.py capture-upstream "$ref" > /tmp/omlx-reference.json
+diff -u benchmarks/contract/fixtures/omlx-v0.8.2-contract.json /tmp/omlx-reference.json
 ```
 
 Capture sets a temporary home and oMLX base path, clears inherited oMLX settings, and routes only HTTP scopes. This bypasses upstream lifespan startup, model loading, and cluster shim publication. The captured mock engine exception is intentional and is checked by its partial text and error message.

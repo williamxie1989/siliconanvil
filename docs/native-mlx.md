@@ -20,7 +20,7 @@ Verify admission, cancellation, and worker cleanup with a scripted backend first
 cargo test --locked
 SILICONANVIL_TEST_BINARY=target/debug/siliconanvil \
   SILICONANVIL_TEST_CHECKPOINT=/path/to/local-checkpoint \
-  python3 -m unittest discover -s benchmarks/rust_evolution -p test_native_http.py
+  python3 -m unittest discover -s benchmarks/contract -p test_native_http.py
 ```
 
 Run the Python command after rebuilding with `--features native-mlx` and colocating the verified Metal library.

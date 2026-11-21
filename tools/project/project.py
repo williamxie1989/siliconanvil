@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_DB = Path.home() / "omlx-notes/rust-evolution/progress.sqlite3"
+DEFAULT_DB = Path.home() / ".siliconanvil/progress.sqlite3"
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY,

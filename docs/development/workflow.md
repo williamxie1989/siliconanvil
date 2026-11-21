@@ -15,7 +15,7 @@ Keep three independent facts. `upstream/reference-commit` is the starting point 
 Prepare a comparison-only Git repository outside this repository first:
 
 ```sh
-reference="$HOME/omlx-notes/rust-evolution/upstream/omlx.git"
+reference="$HOME/.siliconanvil/upstream/omlx.git"
 mkdir -p "$(dirname "$reference")"
 git clone --bare --single-branch --branch main --no-tags \
   https://github.com/jundot/omlx.git "$reference"
@@ -25,7 +25,7 @@ git -C "$reference" config remote.origin.fetch '+refs/heads/main:refs/remotes/or
 On each round, upstream release, or dependency upgrade, fetch first and then inspect the diff after the pinned point:
 
 ```sh
-reference="$HOME/omlx-notes/rust-evolution/upstream/omlx.git"
+reference="$HOME/.siliconanvil/upstream/omlx.git"
 git -C "$reference" fetch --no-tags origin
 cargo run --locked -- upstream-status "$reference"
 ```
@@ -35,12 +35,12 @@ For commits that touch the API, models, caches, MLX/Metal, or other dependencies
 ## Cross-session project management
 
 ```sh
-python3 tools/rust_evolution/project.py resume
-python3 tools/rust_evolution/project.py status
-python3 tools/rust_evolution/project.py history --query upstream
+python3 tools/project/project.py resume
+python3 tools/project/project.py status
+python3 tools/project/project.py history --query upstream
 ```
 
-The ledger defaults to `~/omlx-notes/rust-evolution/progress.sqlite3`, outside the repository; override it with `--db`. Rust tasks use R numbers; the original EV tasks keep their historical evidence and dependencies. Record each entry with `note --summary ... --evidence ... --next ...`. Finish a task with `finish --summary ... --evidence ...`. To record another checkout, pass `--repo PATH` before the subcommand so the tool reads the Git HEAD from that checkout. Evidence paths resolve against the current working directory.
+The ledger defaults to `~/.siliconanvil/progress.sqlite3`, outside the repository; override it with `--db`. Rust tasks use R numbers; the original EV tasks keep their historical evidence and dependencies. Record each entry with `note --summary ... --evidence ... --next ...`. Finish a task with `finish --summary ... --evidence ...`. To record another checkout, pass `--repo PATH` before the subcommand so the tool reads the Git HEAD from that checkout. Evidence paths resolve against the current working directory.
 
 ## Release checklist
 
